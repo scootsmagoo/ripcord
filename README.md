@@ -53,6 +53,7 @@ npm run validate
 - Encrypted HTTP-only session cookies in `src/lib/session.server.ts`
 - Double-submit CSRF protection in `src/lib/csrf.server.ts`
 - Login rate limiting in `src/lib/rate-limit.server.ts`
+- Open signup route in `src/app/api/auth/register/route.ts`
 - Server-side Spacebar integration routes under `src/app/api/`
 
 ## Learn More

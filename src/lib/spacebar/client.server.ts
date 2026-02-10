@@ -9,11 +9,13 @@ type SpacebarRequestOptions = {
 
 export class SpacebarApiError extends Error {
   status: number;
+  details?: unknown;
 
-  constructor(message: string, status = 500) {
+  constructor(message: string, status = 500, details?: unknown) {
     super(message);
     this.name = "SpacebarApiError";
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -51,7 +53,7 @@ export async function spacebarRequest<T>(
           ? body.message
           : "Spacebar request failed.";
 
-      throw new SpacebarApiError(message, response.status);
+      throw new SpacebarApiError(message, response.status, body);
     }
 
     return body as T;

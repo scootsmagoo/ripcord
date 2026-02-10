@@ -139,6 +139,31 @@ input {
   gap: 0.6rem;
 }
 
+.segmented-control {
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.segmented-control button {
+  background: transparent;
+}
+
+.segmented-control button.is-active {
+  background: color-mix(in srgb, var(--background) 75%, #4d6dff);
+  border-color: color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+
+.checkbox-row {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+}
+
+.checkbox-row input[type="checkbox"] {
+  margin-top: 0.2rem;
+}
+
 .status {
   font-weight: 500;
 }

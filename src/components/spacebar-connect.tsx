@@ -8,10 +8,16 @@ type Guild = {
 };
 
 type LoadState = "idle" | "loading" | "done";
+type AuthMode = "login" | "signup";
 
 export function SpacebarConnect() {
+  const [mode, setMode] = useState<AuthMode>("login");
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<LoadState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [guilds, setGuilds] = useState<Guild[]>([]);
@@ -19,12 +25,33 @@ export function SpacebarConnect() {
 
   const isBusy = status === "loading";
   const canSubmit = useMemo(
-    () =>
-      !isBusy &&
-      login.trim().length > 0 &&
-      password.length >= 8 &&
-      csrfToken.length > 0,
-    [csrfToken.length, isBusy, login, password],
+    () => {
+      if (isBusy || csrfToken.length === 0 || password.length < 8) {
+        return false;
+      }
+
+      if (mode === "login") {
+        return login.trim().length > 0;
+      }
+
+      return (
+        email.trim().length > 3 &&
+        username.trim().length >= 2 &&
+        dateOfBirth.length > 0 &&
+        consent
+      );
+    },
+    [
+      consent,
+      csrfToken.length,
+      dateOfBirth,
+      email,
+      isBusy,
+      login,
+      mode,
+      password,
+      username,
+    ],
   );
 
   async function refreshCsrfToken() {
@@ -85,13 +112,25 @@ export function SpacebarConnect() {
     setStatus("loading");
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const body =
+        mode === "login"
+          ? { login: login.trim(), password }
+          : {
+              email: email.trim(),
+              username: username.trim(),
+              password,
+              date_of_birth: dateOfBirth,
+              consent: true,
+            };
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "content-type": "application/json",
           "x-csrf-token": csrfToken,
         },
-        body: JSON.stringify({ login: login.trim(), password }),
+        body: JSON.stringify(body),
       });
       const result = (await response.json()) as { error?: string };
 
@@ -104,6 +143,9 @@ export function SpacebarConnect() {
 
       await loadGuilds();
       setPassword("");
+      if (mode === "signup") {
+        setMode("login");
+      }
     } catch (requestError) {
       setStatus("idle");
       setGuilds([]);
@@ -128,6 +170,10 @@ export function SpacebarConnect() {
       await refreshCsrfToken().catch(() => null);
       setGuilds([]);
       setLogin("");
+      setEmail("");
+      setUsername("");
+      setDateOfBirth("");
+      setConsent(false);
       setPassword("");
       setStatus("idle");
     }
@@ -137,21 +183,95 @@ export function SpacebarConnect() {
     <section className="panel" aria-labelledby="spacebar-connect-heading">
       <h2 id="spacebar-connect-heading">Connect to Spacebar</h2>
       <p className="panel-copy">
-        Credentials are sent only to your own server-side route, which sets an
-        encrypted HTTP-only session cookie.
+        Signup and login both run through your own server-side routes, which set
+        an encrypted HTTP-only session cookie.
       </p>
 
+      <div
+        className="segmented-control"
+        role="tablist"
+        aria-label="Authentication mode"
+      >
+        <button
+          role="tab"
+          aria-selected={mode === "login"}
+          className={mode === "login" ? "is-active" : undefined}
+          type="button"
+          onClick={() => setMode("login")}
+          disabled={isBusy}
+        >
+          Login
+        </button>
+        <button
+          role="tab"
+          aria-selected={mode === "signup"}
+          className={mode === "signup" ? "is-active" : undefined}
+          type="button"
+          onClick={() => setMode("signup")}
+          disabled={isBusy}
+        >
+          Sign up
+        </button>
+      </div>
+
       <form className="form-grid" onSubmit={onSubmit} noValidate>
-        <div className="form-field">
-          <label htmlFor="login">Email or username</label>
-          <input
-            id="login"
-            autoComplete="username"
-            required
-            value={login}
-            onChange={(event) => setLogin(event.target.value)}
-          />
-        </div>
+        {mode === "login" ? (
+          <div className="form-field">
+            <label htmlFor="login">Email or username</label>
+            <input
+              id="login"
+              autoComplete="username"
+              required
+              value={login}
+              onChange={(event) => setLogin(event.target.value)}
+            />
+          </div>
+        ) : (
+          <>
+            <div className="form-field">
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="username">Username</label>
+              <input
+                id="username"
+                autoComplete="username"
+                required
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="dob">Date of birth</label>
+              <input
+                id="dob"
+                type="date"
+                required
+                value={dateOfBirth}
+                onChange={(event) => setDateOfBirth(event.target.value)}
+              />
+            </div>
+            <div className="checkbox-row">
+              <input
+                id="consent"
+                type="checkbox"
+                checked={consent}
+                onChange={(event) => setConsent(event.target.checked)}
+              />
+              <label htmlFor="consent">
+                I agree to the Terms of Service and Privacy Policy.
+              </label>
+            </div>
+          </>
+        )}
 
         <div className="form-field">
           <label htmlFor="password">Password</label>
@@ -168,7 +288,11 @@ export function SpacebarConnect() {
 
         <div className="actions">
           <button type="submit" disabled={!canSubmit}>
-            {isBusy ? "Connecting..." : "Sign in and load guilds"}
+            {isBusy
+              ? "Working..."
+              : mode === "signup"
+                ? "Create account and load guilds"
+                : "Sign in and load guilds"}
           </button>
           <button
             type="button"
@@ -185,7 +309,9 @@ export function SpacebarConnect() {
           ? `Loaded ${guilds.length} guild${guilds.length === 1 ? "" : "s"}.`
           : status === "loading"
             ? "Working..."
-            : "Not connected."}
+            : mode === "signup"
+              ? "Open signup enabled."
+              : "Not connected."}
       </p>
 
       {error ? (
