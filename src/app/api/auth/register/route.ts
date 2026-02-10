@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { env } from "@/lib/env.server";
 import { isValidCsrf } from "@/lib/csrf.server";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit.server";
 import { setSession } from "@/lib/session.server";
@@ -17,6 +18,10 @@ function extractFieldError(details: unknown): string | null {
     return null;
   }
 
+  if ("message" in details && typeof details.message === "string") {
+    return details.message;
+  }
+
   if ("errors" in details && details.errors && typeof details.errors === "object") {
     const values = Object.values(details.errors as Record<string, unknown>);
     for (const value of values) {
@@ -30,6 +35,37 @@ function extractFieldError(details: unknown): string | null {
   }
 
   return null;
+}
+
+type RegisterPayload = z.infer<typeof SpacebarRegisterRequestSchema>;
+
+function toIsoDateString(input: string): string {
+  // Force midnight UTC to avoid timezone rollovers from local parsing.
+  return new Date(`${input}T00:00:00.000Z`).toISOString();
+}
+
+async function registerWithFallback(payload: RegisterPayload) {
+  try {
+    await spacebarRequest<unknown>("/api/v9/auth/register", {
+      method: "POST",
+      body: payload,
+    });
+    return;
+  } catch (error) {
+    if (!(error instanceof SpacebarApiError) || error.status !== 400) {
+      throw error;
+    }
+
+    // Some instances expect a full ISO timestamp instead of YYYY-MM-DD.
+    const isoVariant = {
+      ...payload,
+      date_of_birth: toIsoDateString(payload.date_of_birth),
+    };
+    await spacebarRequest<unknown>("/api/v9/auth/register", {
+      method: "POST",
+      body: isoVariant,
+    });
+  }
 }
 
 export async function POST(request: Request) {
@@ -52,10 +88,7 @@ export async function POST(request: Request) {
 
   try {
     const payload = RequestSchema.parse(await request.json());
-    await spacebarRequest<unknown>("/api/v9/auth/register", {
-      method: "POST",
-      body: payload,
-    });
+    await registerWithFallback(payload);
 
     const loginPayload = SpacebarLoginRequestSchema.parse({
       login: payload.email,
@@ -82,7 +115,14 @@ export async function POST(request: Request) {
         const mapped =
           extractFieldError(error.details) ??
           "Could not register with those details.";
-        return NextResponse.json({ error: mapped }, { status: 400 });
+
+        return NextResponse.json(
+          {
+            error: mapped,
+            ...(env.NODE_ENV !== "production" ? { debug: error.details } : {}),
+          },
+          { status: 400 },
+        );
       }
 
       return NextResponse.json({ error: error.message }, { status: 502 });

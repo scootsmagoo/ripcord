@@ -1,12 +1,19 @@
 import type { NextConfig } from "next";
 
+const isDevelopment = process.env.NODE_ENV !== "production";
+
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self'",
+  // Dev mode needs looser script policy for HMR/tooling.
+  isDevelopment
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    : "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https: wss:",
+  isDevelopment
+    ? "connect-src 'self' http: https: ws: wss:"
+    : "connect-src 'self' https: wss:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

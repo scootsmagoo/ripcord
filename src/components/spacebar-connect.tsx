@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { USERNAME_REGEX } from "@/lib/spacebar/schemas";
 
 type Guild = {
   id: string;
@@ -24,6 +25,10 @@ export function SpacebarConnect() {
   const [csrfToken, setCsrfToken] = useState<string>("");
 
   const isBusy = status === "loading";
+  const usernameIsValid =
+    mode !== "signup" ||
+    (username.trim().length >= 2 && USERNAME_REGEX.test(username.trim()));
+
   const canSubmit = useMemo(
     () => {
       if (isBusy || csrfToken.length === 0 || password.length < 8) {
@@ -36,7 +41,7 @@ export function SpacebarConnect() {
 
       return (
         email.trim().length > 3 &&
-        username.trim().length >= 2 &&
+        usernameIsValid &&
         dateOfBirth.length > 0 &&
         consent
       );
@@ -50,7 +55,7 @@ export function SpacebarConnect() {
       login,
       mode,
       password,
-      username,
+      usernameIsValid,
     ],
   );
 
@@ -132,13 +137,24 @@ export function SpacebarConnect() {
         },
         body: JSON.stringify(body),
       });
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json()) as {
+        error?: string;
+        debug?: unknown;
+      };
 
       if (!response.ok) {
         if (response.status === 403) {
           await refreshCsrfToken();
         }
-        throw new Error(result.error ?? "Login failed.");
+        if (result.error) {
+          if (result.debug) {
+            throw new Error(
+              `${result.error} (debug: ${JSON.stringify(result.debug)})`,
+            );
+          }
+          throw new Error(result.error);
+        }
+        throw new Error("Authentication request failed.");
       }
 
       await loadGuilds();
@@ -245,9 +261,17 @@ export function SpacebarConnect() {
                 id="username"
                 autoComplete="username"
                 required
+                minLength={2}
+                maxLength={32}
+                title="Use letters, numbers, dots, dashes, or underscores."
+                aria-invalid={username.length > 0 && !usernameIsValid}
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
               />
+              <p className="field-hint">
+                Allowed: letters, numbers, <code>.</code>, <code>-</code>,{" "}
+                <code>_</code>
+              </p>
             </div>
             <div className="form-field">
               <label htmlFor="dob">Date of birth</label>

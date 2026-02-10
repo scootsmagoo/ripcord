@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const USERNAME_REGEX = /^[A-Za-z0-9_.-]+$/;
+
 export const SpacebarLoginRequestSchema = z.object({
   login: z.string().min(3).max(320),
   password: z.string().min(8).max(256),
@@ -9,12 +11,13 @@ export const SpacebarRegisterRequestSchema = z.object({
   email: z.email().max(320),
   username: z
     .string()
+    .trim()
     .min(2)
     .max(32)
-    .regex(
-      /^[A-Za-z0-9_.-]+$/,
-      "Username may only include letters, numbers, dots, dashes, or underscores.",
-    ),
+    .regex(USERNAME_REGEX, {
+      error:
+        "Username may only include letters, numbers, dots, dashes, or underscores.",
+    }),
   password: z.string().min(8).max(256),
   date_of_birth: z.string().date(),
   consent: z.literal(true),
