@@ -16,6 +16,11 @@ npm install
 cp .env.example .env.local
 ```
 
+Set:
+
+- `SPACEBAR_BASE_URL` to your Spacebar API host (example: `http://localhost:1337`)
+- `SESSION_ENCRYPTION_KEY` to a 32-byte base64url key
+
 3. Run development server:
 
 ```bash
@@ -45,6 +50,10 @@ npm run validate
 - Cross-site mutation request blocking in `src/proxy.ts`
 - Request ID propagation for future tracing (`x-request-id`)
 - Zod-based environment schema in `src/lib/env.server.ts`
+- Encrypted HTTP-only session cookies in `src/lib/session.server.ts`
+- Double-submit CSRF protection in `src/lib/csrf.server.ts`
+- Login rate limiting in `src/lib/rate-limit.server.ts`
+- Server-side Spacebar integration routes under `src/app/api/`
 
 ## Learn More
 

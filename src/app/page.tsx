@@ -1,4 +1,5 @@
 import styles from "./page.module.css";
+import { SpacebarConnect } from "@/components/spacebar-connect";
 
 export default function Home() {
   return (
@@ -13,14 +14,16 @@ export default function Home() {
         </header>
 
         <section aria-labelledby="next-steps-heading" className={styles.section}>
-          <h2 id="next-steps-heading">Immediate next steps</h2>
+          <h2 id="next-steps-heading">Current integration focus</h2>
           <ul className={styles.list}>
-            <li>Connect to a Discord-compatible backend like Spacebar.</li>
-            <li>Implement authentication with secure session cookies.</li>
-            <li>Add channels, messaging, and real-time websocket updates.</li>
-            <li>Automate accessibility and security checks in CI.</li>
+            <li>Route authentication through server-owned API endpoints.</li>
+            <li>Keep session state inside encrypted HTTP-only cookies.</li>
+            <li>Validate every request/response boundary with schema checks.</li>
+            <li>Keep all interactions keyboard and screen-reader friendly.</li>
           </ul>
         </section>
+
+        <SpacebarConnect />
       </main>
     </div>
   );
